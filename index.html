@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda Diaria con Histórico</title>
+    <style>
+        :root {
+            --color-pendiente: #FF0000;
+            --color-progreso: #FFD700;
+            --color-completado: #00AA00;
+            --color-fondo: #f5f7fa;
+            --color-borde: #e1e4e8;
+            --color-texto: #24292e;
+            --color-boton: #0366d6;
+            --color-boton-hover: #035fc7;
+            --color-fecha: #586069;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--color-texto);
+            background-color: var(--color-fondo);
+            margin: 0;
+            padding: 10px;
+        }
+
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            margin-bottom: 15px;
+            max-width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.5em;
+        }
+
+        .fecha-selector {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .fecha-actual {
+            font-size: 1.1em;
+            color: var(--color-fecha);
+            font-weight: bold;
+            text-align: center;
+            flex-grow: 1;
+        }
+
+        .btn-fecha {
+            background: none;
+            border: none;
+            font-size: 1.2em;
+            cursor: pointer;
+            color: var(--color-boton);
+            padding: 5px 10px;
+        }
+
+        .formulario-tarea {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        input, select {
+            padding: 8px;
+            border: 1px solid var(--color-borde);
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        button {
+            background-color: var(--color-boton);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.2s;
+            font-size: 0.9em;
+        }
+
+        button:hover {
+            background-color: var(--color-boton-hover);
+        }
+
+        .btn-agregar {
+            grid-column: span 2;
+        }
+
+        .lista-tareas {
+            border: 1px solid var(--color-borde);
+            border-radius: 6px;
+            overflow: hidden;
+            max-height: 50vh;
+            overflow-y: auto;
+        }
+
+        .tarea-item {
+            display: grid;
+            grid-template-columns: 80px 1fr auto;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid var(--color-borde);
+            font-size: 0.9em;
+        }
+
+        .tarea-item:last-child {
+            border-bottom: none;
+        }
+
+        .hora-tarea {
+            font-weight: 600;
+            color: #57606a;
+        }
+
+        .texto-tarea {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .estado-botones {
+            display: flex;
+            gap: 3px;
+        }
+
+        .btn-estado {
+            padding: 3px 6px;
+            font-size: 0.7em;
+            border-radius: 3px;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+
+        .btn-pendiente {
+            background-color: #f1f1f1;
+            color: var(--color-texto);
+        }
+
+        .btn-progreso {
+            background-color: #fff8e1;
+            color: #ffab00;
+        }
+
+        .btn-completado {
+            background-color: #e6ffed;
+            color: #00aa00;
+        }
+
+        .pendiente {
+            color: var(--color-pendiente);
+        }
+
+        .en-progreso {
+            color: var(--color-progreso);
+        }
+
+        .completada {
+            color: var(--color-completado);
+        }
+
+        .proyecto {
+            background-color: #f0f5ff;
+            color: #0366d6;
+            padding: 2px 6px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            margin-left: 6px;
+            white-space: nowrap;
+        }
+
+        .no-tareas {
+            text-align: center;
+            padding: 20px;
+            color: #57606a;
+        }
+
+        .icono-estado {
+            margin-right: 6px;
+            font-weight: bold;
+        }
+
+        .btn-historico {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        /* Estilos para el modal de histórico */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .modal-contenido {
+            background-color: white;
+            margin: 20px auto;
+            padding: 15px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .modal-title {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 1.5em;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .fecha-historial {
+            margin: 15px 0 5px 0;
+            font-weight: bold;
+            color: var(--color-fecha);
+            border-bottom: 1px solid var(--color-borde);
+            padding-bottom: 3px;
+        }
+
+        @media (max-width: 480px) {
+            .tarea-item {
+                grid-template-columns: 70px 1fr;
+            }
+            
+            .estado-botones {
+                grid-column: span 2;
+                justify-content: flex-end;
+                margin-top: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Agenda Diaria</h1>
+        
+        <div class="fecha-selector">
+            <button class="btn-fecha" id="btn-anterior">←</button>
+            <div class="fecha-actual" id="fecha-actual"></div>
+            <button class="btn-fecha" id="btn-siguiente">→</button>
+        </div>
+        
+        <div class="formulario-tarea">
+            <div class="form-group">
+                <label for="hora-tarea">Hora</label>
+                <select id="hora-tarea" required>
+                    <!-- Las opciones se generarán con JavaScript -->
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="texto-tarea">Tarea</label>
+                <input type="text" id="texto-tarea" placeholder="Descripción" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="proyecto-tarea">Proyecto</label>
+                <input type="text" id="proyecto-tarea" placeholder="Proyecto" required>
+            </div>
+            
+            <button id="agregar-tarea" class="btn-agregar">Agregar Tarea</button>
+        </div>
+        
+        <div class="lista-tareas" id="lista-tareas">
+            <div class="no-tareas">No hay tareas programadas para este día.</div>
+        </div>
+        
+        <button id="ver-historico" class="btn-historico">Ver Histórico Completo</button>
+    </div>
+
+    <!-- Modal para el histórico -->
+    <div id="modal-historico" class="modal">
+        <div class="modal-contenido">
+            <div class="modal-header">
+                <div class="modal-title">Histórico de Tareas</div>
+                <button class="close-modal" id="cerrar-modal">×</button>
+            </div>
+            <div id="contenido-historico">
+                <!-- El contenido del histórico se generará dinámicamente -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Obtener elementos del DOM
+        const fechaActualElement = document.getElementById('fecha-actual');
+        const horaTareaSelect = document.getElementById('hora-tarea');
+        const textoTareaInput = document.getElementById('texto-tarea');
+        const proyectoTareaInput = document.getElementById('proyecto-tarea');
+        const agregarTareaBtn = document.getElementById('agregar-tarea');
+        const listaTareasDiv = document.getElementById('lista-tareas');
+        const btnAnterior = document.getElementById('btn-anterior');
+        const btnSiguiente = document.getElementById('btn-siguiente');
+        const btnVerHistorico = document.getElementById('ver-historico');
+        const modalHistorico = document.getElementById('modal-historico');
+        const contenidoHistorico = document.getElementById('contenido-historico');
+        const btnCerrarModal = document.getElementById('cerrar-modal');
+
+        // Clave para el localStorage
+        const STORAGE_KEY = 'agendaDiariaConHistorico';
+        
+        // Fecha actual seleccionada (inicialmente hoy)
+        let fechaSeleccionada = new Date();
+        fechaSeleccionada.setHours(0, 0, 0, 0);
+
+        // Formatear fecha como YYYY-MM-DD para usar como clave
+        function formatearFechaClave(fecha) {
+            const año = fecha.getFullYear();
+            const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+            const dia = String(fecha.getDate()).padStart(2, '0');
+            return `${año}-${mes}-${dia}`;
+        }
+
+        // Formatear fecha para mostrar
+        function formatearFechaMostrar(fecha) {
+            const opciones = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+            return fecha.toLocaleDateString('es-ES', opciones);
+        }
+
+        // Generar opciones de hora (7:00 AM a 6:00 PM en incrementos de 30 minutos)
+        function generarOpcionesHoras() {
+            const horas = [];
+            for (let hora = 7; hora <= 18; hora++) {
+                for (let minuto = 0; minuto < 60; minuto += 30) {
+                    const horaFormato24 = `${hora.toString().padStart(2, '0')}:${minuto.toString().padStart(2, '0')}`;
+                    let horaFormato12 = hora % 12 || 12;
+                    const amPm = hora < 12 ? 'AM' : 'PM';
+                    horas.push({
+                        formato24: horaFormato24,
+                        display: `${horaFormato12}:${minuto.toString().padStart(2, '0')} ${amPm}`
+                    });
+                }
+            }
+            return horas;
+        }
+
+        // Llenar el selector de horas
+        function llenarSelectorHoras() {
+            const horas = generarOpcionesHoras();
+            horaTareaSelect.innerHTML = '';
+            horas.forEach(hora => {
+                const option = document.createElement('option');
+                option.value = hora.formato24;
+                option.textContent = hora.display;
+                horaTareaSelect.appendChild(option);
+            });
+        }
+
+        // Mostrar la fecha actual seleccionada
+        function mostrarFechaSeleccionada() {
+            fechaActualElement.textContent = formatearFechaMostrar(fechaSeleccionada);
+        }
+
+        // Cargar tareas desde localStorage para una fecha específica
+        function cargarTareas(fecha) {
+            const todasTareas = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+            const fechaClave = formatearFechaClave(fecha);
+            return todasTareas[fechaClave] || [];
+        }
+
+        // Guardar tareas en localStorage para una fecha específica
+        function guardarTareas(fecha, tareas) {
+            const todasTareas = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+            const fechaClave = formatearFechaClave(fecha);
+            
+            if (tareas.length === 0) {
+                // Eliminar fecha si no hay tareas
+                if (todasTareas[fechaClave]) {
+                    delete todasTareas[fechaClave];
+                }
+            } else {
+                todasTareas[fechaClave] = tareas;
+            }
+            
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(todasTareas));
+        }
+
+        // Renderizar todas las tareas para la fecha seleccionada
+        function renderizarTareas() {
+            const tareas = cargarTareas(fechaSeleccionada);
+            
+            if (tareas.length === 0) {
+                listaTareasDiv.innerHTML = '<div class="no-tareas">No hay tareas programadas para este día.</div>';
+                return;
+            }
+            
+            // Ordenar tareas por hora
+            tareas.sort((a, b) => a.hora.localeCompare(b.hora));
+            
+            listaTareasDiv.innerHTML = '';
+            
+            tareas.forEach((tarea, index) => {
+                const tareaItem = document.createElement('div');
+                tareaItem.className = 'tarea-item';
+                
+                // Determinar icono y clase según estado
+                let icono, claseEstado;
+                switch (tarea.estado) {
+                    case 'pendiente':
+                        icono = '✖️';
+                        claseEstado = 'pendiente';
+                        break;
+                    case 'en-progreso':
+                        icono = '🟡';
+                        claseEstado = 'en-progreso';
+                        break;
+                    case 'completada':
+                        icono = '✔️';
+                        claseEstado = 'completada';
+                        break;
+                    default:
+                        icono = '✖️';
+                        claseEstado = 'pendiente';
+                }
+                
+                tareaItem.innerHTML = `
+                    <div class="hora-tarea">${tarea.hora}</div>
+                    <div class="texto-tarea ${claseEstado}">
+                        <span class="icono-estado">${icono}</span>
+                        ${tarea.tarea}
+                        <span class="proyecto">${tarea.proyecto}</span>
+                    </div>
+                    <div class="estado-botones">
+                        <button class="btn-estado btn-pendiente" data-index="${index}" data-estado="pendiente">Pendiente</button>
+                        <button class="btn-estado btn-progreso" data-index="${index}" data-estado="en-progreso">En Progreso</button>
+                        <button class="btn-estado btn-completado" data-index="${index}" data-estado="completada">Completada</button>
+                    </div>
+                `;
+                
+                listaTareasDiv.appendChild(tareaItem);
+            });
+            
+            // Agregar event listeners a los botones de estado
+            document.querySelectorAll('.btn-estado').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const index = parseInt(this.getAttribute('data-index'));
+                    const nuevoEstado = this.getAttribute('data-estado');
+                    cambiarEstadoTarea(index, nuevoEstado);
+                });
+            });
+        }
+
+        // Agregar una nueva tarea
+        function agregarTarea() {
+            const hora = horaTareaSelect.value;
+            const tarea = textoTareaInput.value.trim();
+            const proyecto = proyectoTareaInput.value.trim();
+            
+            if (!tarea || !proyecto) {
+                alert('Por favor, completa todos los campos');
+                return;
+            }
+            
+            const nuevaTarea = {
+                hora,
+                tarea,
+                proyecto,
+                estado: 'pendiente'
+            };
+            
+            const tareas = cargarTareas(fechaSeleccionada);
+            tareas.push(nuevaTarea);
+            guardarTareas(fechaSeleccionada, tareas);
+            
+            // Limpiar campos y renderizar
+            textoTareaInput.value = '';
+            proyectoTareaInput.value = '';
+            renderizarTareas();
+        }
+
+        // Cambiar el estado de una tarea
+        function cambiarEstadoTarea(index, nuevoEstado) {
+            const tareas = cargarTareas(fechaSeleccionada);
+            if (index >= 0 && index < tareas.length) {
+                tareas[index].estado = nuevoEstado;
+                guardarTareas(fechaSeleccionada, tareas);
+                renderizarTareas();
+            }
+        }
+
+        // Cambiar a un día diferente
+        function cambiarDias(dias) {
+            const nuevaFecha = new Date(fechaSeleccionada);
+            nuevaFecha.setDate(nuevaFecha.getDate() + dias);
+            fechaSeleccionada = nuevaFecha;
+            mostrarFechaSeleccionada();
+            renderizarTareas();
+        }
+
+        // Mostrar el histórico de tareas
+        function mostrarHistorico() {
+            const todasTareas = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+            contenidoHistorico.innerHTML = '';
+            
+            // Ordenar fechas de más reciente a más antigua
+            const fechas = Object.keys(todasTareas).sort().reverse();
+            
+            if (fechas.length === 0) {
+                contenidoHistorico.innerHTML = '<p>No hay tareas registradas en el histórico.</p>';
+                modalHistorico.style.display = 'block';
+                return;
+            }
+            
+            fechas.forEach(fecha => {
+                const fechaObj = new Date(fecha);
+                const fechaHeader = document.createElement('div');
+                fechaHeader.className = 'fecha-historial';
+                fechaHeader.textContent = formatearFechaMostrar(fechaObj);
+                contenidoHistorico.appendChild(fechaHeader);
+                
+                const tareas = todasTareas[fecha];
+                tareas.sort((a, b) => a.hora.localeCompare(b.hora));
+                
+                tareas.forEach(tarea => {
+                    const tareaItem = document.createElement('div');
+                    tareaItem.className = 'tarea-item';
+                    
+                    let icono, claseEstado;
+                    switch (tarea.estado) {
+                        case 'pendiente':
+                            icono = '✖️';
+                            claseEstado = 'pendiente';
+                            break;
+                        case 'en-progreso':
+                            icono = '🟡';
+                            claseEstado = 'en-progreso';
+                            break;
+                        case 'completada':
+                            icono = '✔️';
+                            claseEstado = 'completada';
+                            break;
+                    }
+                    
+                    tareaItem.innerHTML = `
+                        <div class="hora-tarea">${tarea.hora}</div>
+                        <div class="texto-tarea ${claseEstado}">
+                            <span class="icono-estado">${icono}</span>
+                            ${tarea.tarea}
+                            <span class="proyecto">${tarea.proyecto}</span>
+                        </div>
+                    `;
+                    
+                    contenidoHistorico.appendChild(tareaItem);
+                });
+            });
+            
+            modalHistorico.style.display = 'block';
+        }
+
+        // Inicializar la aplicación
+        function init() {
+            llenarSelectorHoras();
+            mostrarFechaSeleccionada();
+            renderizarTareas();
+            
+            // Event listeners
+            agregarTareaBtn.addEventListener('click', agregarTarea);
+            btnAnterior.addEventListener('click', () => cambiarDias(-1));
+            btnSiguiente.addEventListener('click', () => cambiarDias(1));
+            btnVerHistorico.addEventListener('click', mostrarHistorico);
+            btnCerrarModal.addEventListener('click', () => {
+                modalHistorico.style.display = 'none';
+            });
+            
+            // Cerrar modal al hacer clic fuera del contenido
+            modalHistorico.addEventListener('click', (e) => {
+                if (e.target === modalHistorico) {
+                    modalHistorico.style.display = 'none';
+                }
+            });
+            
+            // Permitir agregar con Enter
+            textoTareaInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') agregarTarea();
+            });
+            
+            proyectoTareaInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') agregarTarea();
+            });
+        }
+
+        // Iniciar la aplicación cuando el DOM esté listo
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
